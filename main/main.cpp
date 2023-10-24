@@ -54,25 +54,37 @@ extern "C" auto app_main() -> void
             .loop_count = 0, // no transfer loop
     };
 
-    const int numLeds = 20 + 16;
-    // const int bitsPerLed = 24;
-    // const int numBits = numLeds * bitsPerLed;
-
+    const int numLeds = 20 + 16; // Assume you have 16 LEDs
     auto data = std::vector<Led>(numLeds);
-    float brightness = 0.2f;
+
+    double waveWidth = 3.0;  // Width of the wave in terms of LED count
+    double waveSpeed = 0.50; // Speed of the wave movement
 
     while(true) // Infinite loop to keep the wave going
     {
         double t = esp_timer_get_time() / 1000000.0; // Current time in seconds
 
+        // Calculate the position of the wave center
+        double waveCenter = fmod(t * waveSpeed * numLeds, double(numLeds));
+
         for(int i = 0; i < numLeds; ++i)
         {
-            double phase = i * 2.0 * M_PI / numLeds; // Phase shift for each LED
-            data[i].r = uint8_t((sin(t + phase) * 0.5 + 0.5) * 255 * brightness);
-            data[i].g = uint8_t(
-                    (sin(t + phase + 2.0 * M_PI / 3) * 0.5 + 0.5) * 255 * brightness);
-            data[i].b = uint8_t(
-                    (sin(t + phase + 4.0 * M_PI / 3) * 0.5 + 0.5) * 255 * brightness);
+            double distance = fabs(i - waveCenter);
+            if(distance <= waveWidth / 2)
+            {
+                // LED is within the wave
+                double intensity = (waveWidth / 2 - distance) / (waveWidth / 2) * 0.6;
+                data[i].r = uint8_t(intensity * 64);
+                data[i].g = uint8_t(intensity * 255);
+                data[i].b = uint8_t(intensity * 32);
+            }
+            else
+            {
+                // LED is outside the wave
+                data[i].r = 0;
+                data[i].g = 0;
+                data[i].b = 0;
+            }
         }
 
         // Flush RGB values to LEDs
