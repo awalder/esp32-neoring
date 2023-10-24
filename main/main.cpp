@@ -23,6 +23,57 @@ auto setup()
 {
 }
 
+// Function to convert a hue value to RGB.
+void hueToRgb(float hue, uint8_t& r, uint8_t& g, uint8_t& b)
+{
+    float red, green, blue;
+    float f = (hue / 60.0f) - floor(hue / 60.0f);
+    float p = 0.0f;
+    float q = 1.0f - f;
+    float t = f;
+
+    if(hue < 60.0f)
+    {
+        red = 1.0f;
+        green = t;
+        blue = p;
+    }
+    else if(hue < 120.0f)
+    {
+        red = q;
+        green = 1.0f;
+        blue = p;
+    }
+    else if(hue < 180.0f)
+    {
+        red = p;
+        green = 1.0f;
+        blue = t;
+    }
+    else if(hue < 240.0f)
+    {
+        red = p;
+        green = q;
+        blue = 1.0f;
+    }
+    else if(hue < 300.0f)
+    {
+        red = t;
+        green = p;
+        blue = 1.0f;
+    }
+    else
+    {
+        red = 1.0f;
+        green = p;
+        blue = q;
+    }
+
+    r = uint8_t(red * 255.0f);
+    g = uint8_t(green * 255.0f);
+    b = uint8_t(blue * 255.0f);
+}
+
 extern "C" auto app_main() -> void
 {
     ESP_LOGI(TAG, "Create RMT TX channel");
@@ -54,37 +105,20 @@ extern "C" auto app_main() -> void
             .loop_count = 0, // no transfer loop
     };
 
-    const int numLeds = 20 + 16; // Assume you have 16 LEDs
+    const int numLeds = 20;
     auto data = std::vector<Led>(numLeds);
 
-    double waveWidth = 3.0;  // Width of the wave in terms of LED count
-    double waveSpeed = 0.50; // Speed of the wave movement
+    float cycleSpeed = 0.12f; // Speed of the color cycling
 
-    while(true) // Infinite loop to keep the wave going
+    while(true) // Infinite loop to keep the effect going
     {
         double t = esp_timer_get_time() / 1000000.0; // Current time in seconds
 
-        // Calculate the position of the wave center
-        double waveCenter = fmod(t * waveSpeed * numLeds, double(numLeds));
-
         for(int i = 0; i < numLeds; ++i)
         {
-            double distance = fabs(i - waveCenter);
-            if(distance <= waveWidth / 2)
-            {
-                // LED is within the wave
-                double intensity = (waveWidth / 2 - distance) / (waveWidth / 2) * 0.6;
-                data[i].r = uint8_t(intensity * 64);
-                data[i].g = uint8_t(intensity * 255);
-                data[i].b = uint8_t(intensity * 32);
-            }
-            else
-            {
-                // LED is outside the wave
-                data[i].r = 0;
-                data[i].g = 0;
-                data[i].b = 0;
-            }
+            float hue = fmod(
+                    (i * 360.0f / numLeds) + (t * cycleSpeed * 360.0f), 360.0f);
+            hueToRgb(hue, data[i].r, data[i].g, data[i].b);
         }
 
         // Flush RGB values to LEDs
@@ -97,6 +131,7 @@ extern "C" auto app_main() -> void
 
         ESP_ERROR_CHECK(rmt_tx_wait_all_done(led_chan, portMAX_DELAY));
 
-        vTaskDelay(pdMS_TO_TICKS(50)); // Delay to control the speed of the wave
+        vTaskDelay(pdMS_TO_TICKS(
+                50)); // Delay to control the speed of the color cycling
     }
 }
