@@ -4,23 +4,87 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "glm/glm.hpp"
+#include "glm/trigonometric.hpp"
+#include "glm/vec3.hpp"
+#include "neowriter.h"
+#include "types.h"
 #include <cmath>
 #include <vector>
 
 static const char* const TAG = "neoring";
 
 // 10MHz resolution, 1 tick = 0.1us (led strip needs a high resolution)
-#define RMT_LED_STRIP_RESOLUTION_HZ 10000000
-
-struct Led
+glm::vec3 palette(float t)
 {
-    uint8_t r = 0;
-    uint8_t g = 0;
-    uint8_t b = 0;
-};
+    // clang-format off
+    // [[0.000 0.500 0.500] [0.000 0.500 0.500] [0.000 0.500 0.333] [0.000 0.500 0.667]]
+    // [[0.938 0.328 0.718] [0.659 0.438 0.328] [0.388 0.388 0.296] [2.538 2.478 0.168]]
+    //[[0.821 0.328 0.242] [0.659 0.481 0.896] [0.612 0.340 0.296] [2.820 3.026 -0.273]]
+    //[[0.667 0.500 0.500] [0.500 0.667 0.500] [0.667 0.666 0.500] [0.200 0.000 0.500]]
+    // [[0.500 0.500 0.000] [0.500 0.500 0.000] [0.500 0.500 0.000] [0.500 0.000 0.000]]
+    // [[0.650 0.500 0.310] [-0.650 0.500 0.600] [0.333 0.278 0.278] [0.660 0.000 0.667]]
+    // [[0.590 0.811 0.120] [0.410 0.392 0.590] [0.940 0.548 0.278] [-4.242 -6.611 -4.045]]
+    // [[0.590 0.811 0.120] [1.128 0.392 0.868] [4.226 1.408 2.458] [-4.244 -6.613 -4.047]]
+    // clang-format on
 
-auto setup()
-{
+    // auto a = glm::vec3(0.590, 0.811, 0.120);
+    // auto b = glm::vec3(1.128, 0.392, 0.868);
+    // auto c = glm::vec3(4.226, 1.408, 2.458);
+    // auto d = glm::vec3(-4.244, -6.613, -4.047);
+
+    // pinkki aarnelle
+    // auto a = glm::vec3(0.590, 0.811, 0.120);
+    // auto b = glm::vec3(0.410, 0.392, 0.590);
+    // auto c = glm::vec3(0.940, 0.548, 0.278);
+    // auto d = glm::vec3(-4.242, -6.611, -4.045);
+
+    // auto a = glm::vec3(0.650, 0.500, 0.310);
+    // auto b = glm::vec3(-0.650, 0.500, 0.600);
+    // auto c = glm::vec3(0.333, 0.278, 0.278);
+    // auto d = glm::vec3(0.660, 0.000, 0.667);
+
+    auto a = glm::vec3(0.500, 0.500, 0.000);
+    auto b = glm::vec3(0.500, 0.500, 0.000);
+    auto c = glm::vec3(0.500, 0.500, 0.000);
+    auto d = glm::vec3(0.500, 0.000, 0.000);
+
+    // auto a = glm::vec3(0.667, 0.500, 0.500);
+    // auto b = glm::vec3(0.500, 0.667, 0.500);
+    // auto c = glm::vec3(0.667, 0.666, 0.500);
+    // auto d = glm::vec3(0.200, 0.000, 0.500);
+
+    // auto a = Vec3(0.821, 0.328, 0.242);
+    // auto b = Vec3(0.659, 0.481, 0.896);
+    // auto c = Vec3(0.612, 0.340, 0.296);
+    // auto d = Vec3(2.820, 3.026, -0.273);
+
+    // auto a = Vec3(0.938, 0.328, 0.718);
+    // auto b = Vec3(0.659, 0.438, 0.328);
+    // auto c = Vec3(0.388, 0.388, 0.296);
+    // auto d = Vec3(2.538, 2.478, 0.168);
+
+    // auto a = glm::vec3(0.000, 0.500, 0.500);
+    // auto b = glm::vec3(0.000, 0.500, 0.500);
+    // auto c = glm::vec3(0.000, 0.500, 0.333);
+    // auto d = glm::vec3(0.000, 0.500, 0.667);
+
+    // auto a = glm::vec3(0.5, 0.5, 0.5);
+    // auto b = glm::vec3(0.5, 0.5, 0.5);
+    // auto c = glm::vec3(1.0, 1.0, 1.0);
+    // auto d = glm::vec3(0.00, 0.333, 0.667);
+
+    // auto a = Vec3(0.5, 0.5, 0.5);
+    // auto b = Vec3(0.5, 0.5, 0.5);
+    // auto c = Vec3(1.0, 0.7, 0.4);
+    // auto d = Vec3(0.00, 0.15, 0.20);
+
+    // auto a = Vec3(0.500, 0.500, 0.500);
+    // auto b = Vec3(0.500, 0.500, 0.500);
+    // auto c = Vec3(1.000, 1.000, 1.000);
+    // auto d = Vec3(0.000, 0.333, 0.667);
+
+    return glm::clamp(a + b * glm::cos((c * t + d) * 6.28318f), 0.0f, 1.0f);
 }
 
 // Function to convert a hue value to RGB.
@@ -69,69 +133,33 @@ void hueToRgb(float hue, uint8_t& r, uint8_t& g, uint8_t& b)
         blue = q;
     }
 
-    r = uint8_t(red * 255.0f);
-    g = uint8_t(green * 255.0f);
-    b = uint8_t(blue * 255.0f);
+    r = uint8_t(red * 63.0f);
+    g = uint8_t(green * 63.0f);
+    b = uint8_t(blue * 63.0f);
 }
 
 extern "C" auto app_main() -> void
 {
-    ESP_LOGI(TAG, "Create RMT TX channel");
-    rmt_channel_handle_t led_chan = nullptr;
-    rmt_tx_channel_config_t tx_chan_config = {
-            .gpio_num = GPIO_NUM_3,
-            .clk_src = RMT_CLK_SRC_DEFAULT,
-            .resolution_hz = RMT_LED_STRIP_RESOLUTION_HZ,
-            .mem_block_symbols = 64, // increase the block size can make the LED
-                                     // less flickering
-            .trans_queue_depth = 4,  // set the number of transactions that can
-                                     // be pending in the background
-    };
+    auto writer = NeoWriter(GPIO_NUM_3);
 
-    ESP_ERROR_CHECK(rmt_new_tx_channel(&tx_chan_config, &led_chan));
-
-    ESP_LOGI(TAG, "Install led strip encoder");
-    rmt_encoder_handle_t led_encoder = nullptr;
-    led_strip_encoder_config_t encoder_config = {
-            .resolution = RMT_LED_STRIP_RESOLUTION_HZ,
-    };
-    ESP_ERROR_CHECK(rmt_new_led_strip_encoder(&encoder_config, &led_encoder));
-
-    ESP_LOGI(TAG, "Enable RMT TX channel");
-    ESP_ERROR_CHECK(rmt_enable(led_chan));
-
-    ESP_LOGI(TAG, "Start LED rainbow chase");
-    rmt_transmit_config_t tx_config = {
-            .loop_count = 0, // no transfer loop
-    };
-
-    const int numLeds = 20;
+    const int numLeds = 60;
     auto data = std::vector<Led>(numLeds);
 
-    float cycleSpeed = 0.12f; // Speed of the color cycling
-
-    while(true) // Infinite loop to keep the effect going
+    while(true)
     {
-        double t = esp_timer_get_time() / 1000000.0; // Current time in seconds
+        float t = float(esp_timer_get_time()) / 100'000.0f;
+        float scalar = 0.02;
+        float brightness = 0.3;
 
         for(int i = 0; i < numLeds; ++i)
         {
-            float hue = fmod(
-                    (i * 360.0f / numLeds) + (t * cycleSpeed * 360.0f), 360.0f);
-            hueToRgb(hue, data[i].r, data[i].g, data[i].b);
+            auto color = palette((t + (float)i) * scalar);
+            data[i].r = uint8_t(color.y * brightness * 255);
+            data[i].g = uint8_t(color.x * brightness * 255);
+            data[i].b = uint8_t(color.z * brightness * 255);
         }
 
-        // Flush RGB values to LEDs
-        ESP_ERROR_CHECK(rmt_transmit(
-                led_chan,
-                led_encoder,
-                data.data(),
-                data.size() * sizeof(Led),
-                &tx_config));
-
-        ESP_ERROR_CHECK(rmt_tx_wait_all_done(led_chan, portMAX_DELAY));
-
-        vTaskDelay(pdMS_TO_TICKS(
-                50)); // Delay to control the speed of the color cycling
+        writer.write(data);
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
