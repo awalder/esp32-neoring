@@ -142,7 +142,7 @@ extern "C" auto app_main() -> void
 {
     auto writer = NeoWriter(GPIO_NUM_3);
 
-    const int numLeds = 60;
+    const int numLeds = 120;
     auto data = std::vector<Led>(numLeds);
 
     while(true)
