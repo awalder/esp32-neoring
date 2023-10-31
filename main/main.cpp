@@ -144,22 +144,55 @@ extern "C" auto app_main() -> void
 
     const int numLeds = 120;
     auto data = std::vector<Led>(numLeds);
+    const float  waveSpeed = 0.1; // Wave speed in Hz
+    const float  waveWidth = 10;  // Wave width in LEDs
 
-    while(true)
+    while(true) // Infinite loop to keep the wave going
     {
-        float t = float(esp_timer_get_time()) / 100'000.0f;
-        float scalar = 0.02;
-        float brightness = 0.3;
+        double t = esp_timer_get_time() / 1000000.0; // Current time in seconds
+
+        // Calculate the position of the wave center
+        double waveCenter = fmod(t * waveSpeed * numLeds, double(numLeds));
 
         for(int i = 0; i < numLeds; ++i)
         {
-            auto color = palette((t + (float)i) * scalar);
-            data[i].r = uint8_t(color.y * brightness * 255);
-            data[i].g = uint8_t(color.x * brightness * 255);
-            data[i].b = uint8_t(color.z * brightness * 255);
+            double distance = fabs(i - waveCenter);
+            if(distance <= waveWidth / 2)
+            {
+                // LED is within the wave
+                double intensity = (waveWidth / 2 - distance) / (waveWidth / 2) * 0.6;
+                data[i].r = uint8_t(intensity * 64);
+                data[i].g = uint8_t(intensity * 255);
+                data[i].b = uint8_t(intensity * 32);
+            }
+            else
+            {
+                // LED is outside the wave
+                data[i].r = 0;
+                data[i].g = 0;
+                data[i].b = 0;
+            }
         }
 
+        // Flush RGB values to LEDs
         writer.write(data);
-        vTaskDelay(pdMS_TO_TICKS(50));
+        vTaskDelay(pdMS_TO_TICKS(50)); // Delay to control the speed of the wave
     }
+    // while(true)
+    // {
+    //     float t = float(esp_timer_get_time()) / 100'000.0f;
+    //     float scalar = 0.02;
+    //     float brightness = 0.3;
+    //
+    //     for(int i = 0; i < numLeds; ++i)
+    //     {
+    //         auto color = palette((t + (float)i) * scalar);
+    //         data[i].r = uint8_t(color.y * brightness * 255);
+    //         data[i].g = uint8_t(color.x * brightness * 255);
+    //         data[i].b = uint8_t(color.z * brightness * 255);
+    //     }
+    //
+    //     writer.write(data);
+    //     vTaskDelay(pdMS_TO_TICKS(50));
+    // }
 }
