@@ -10,6 +10,7 @@
 #include "neowriter.h"
 #include "types.h"
 #include <cmath>
+#include <random>
 #include <vector>
 
 static const char* const TAG = "neoring";
@@ -26,7 +27,19 @@ glm::vec3 palette(float t)
     // [[0.650 0.500 0.310] [-0.650 0.500 0.600] [0.333 0.278 0.278] [0.660 0.000 0.667]]
     // [[0.590 0.811 0.120] [0.410 0.392 0.590] [0.940 0.548 0.278] [-4.242 -6.611 -4.045]]
     // [[0.590 0.811 0.120] [1.128 0.392 0.868] [4.226 1.408 2.458] [-4.244 -6.613 -4.047]]
+    // [[0.938 0.500 0.188] [0.098 0.168 0.438] [0.800 0.800 0.608] [0.000 0.108 0.500]]
+    // [[0.938 0.488 0.188] [0.918 0.248 0.438] [0.800 1.618 0.608] [-0.452 -0.192 0.492]]
     // clang-format on
+
+    auto a = glm::vec3(0.938, 0.488, 0.188);
+    auto b = glm::vec3(0.918, 0.248, 0.438);
+    auto c = glm::vec3(0.800, 1.618, 0.608);
+    auto d = glm::vec3(-0.452, -0.192, 0.492);
+
+    // auto a = glm::vec3(0.938, 0.500, 0.188);
+    // auto b = glm::vec3(0.098, 0.168, 0.438);
+    // auto c = glm::vec3(0.800, 0.800, 0.608);
+    // auto d = glm::vec3(0.000, 0.108, 0.500);
 
     // auto a = glm::vec3(0.590, 0.811, 0.120);
     // auto b = glm::vec3(1.128, 0.392, 0.868);
@@ -44,10 +57,10 @@ glm::vec3 palette(float t)
     // auto c = glm::vec3(0.333, 0.278, 0.278);
     // auto d = glm::vec3(0.660, 0.000, 0.667);
 
-    auto a = glm::vec3(0.500, 0.500, 0.000);
-    auto b = glm::vec3(0.500, 0.500, 0.000);
-    auto c = glm::vec3(0.500, 0.500, 0.000);
-    auto d = glm::vec3(0.500, 0.000, 0.000);
+    // auto a = glm::vec3(0.500, 0.500, 0.000);
+    // auto b = glm::vec3(0.500, 0.500, 0.000);
+    // auto c = glm::vec3(0.500, 0.500, 0.000);
+    // auto d = glm::vec3(0.500, 0.000, 0.000);
 
     // auto a = glm::vec3(0.667, 0.500, 0.500);
     // auto b = glm::vec3(0.500, 0.667, 0.500);
@@ -63,6 +76,11 @@ glm::vec3 palette(float t)
     // auto b = Vec3(0.659, 0.438, 0.328);
     // auto c = Vec3(0.388, 0.388, 0.296);
     // auto d = Vec3(2.538, 2.478, 0.168);
+
+    // auto a = glm::vec3(0.500, 0.000, 0.500);
+    // auto b = glm::vec3(0.500, 0.000, 0.500);
+    // auto c = glm::vec3(0.500, 0.000, 0.333);
+    // auto d = glm::vec3(0.500, 0.000, 0.667);
 
     // auto a = glm::vec3(0.000, 0.500, 0.500);
     // auto b = glm::vec3(0.000, 0.500, 0.500);
@@ -138,61 +156,70 @@ void hueToRgb(float hue, uint8_t& r, uint8_t& g, uint8_t& b)
     b = uint8_t(blue * 63.0f);
 }
 
+// Configuration for the twinkling effect
+struct TwinkleConfig
+{
+    float riseTime;
+    float maxBrightness;
+};
+
+// Function to update the brightness of an LED for the twinkling effect
+void updateTwinkle(Led& led, TwinkleConfig& config, float deltaTime)
+{
+    static std::default_random_engine generator;
+    static std::uniform_real_distribution<float> distribution(0.0, 1.0);
+
+    float targetBrightness = 1.0f;
+    // Randomly decide if the LED should start/stop twinkling
+    if(distribution(generator) < 0.05)
+    { // 5% chance to change state
+        // Randomly assign a new target brightness
+        targetBrightness = distribution(generator) * config.maxBrightness;
+    }
+
+    // Adjust current brightness towards target brightness
+    if(led.brightness < targetBrightness)
+    {
+        led.brightness += deltaTime / config.riseTime;
+        if(led.brightness > targetBrightness)
+        {
+            led.brightness = targetBrightness;
+        }
+    }
+    else if(led.brightness > targetBrightness)
+    {
+        led.brightness -= deltaTime / config.riseTime;
+        if(led.brightness < targetBrightness)
+        {
+            led.brightness = targetBrightness;
+        }
+    }
+}
+
 extern "C" auto app_main() -> void
 {
     auto writer = NeoWriter(GPIO_NUM_3);
-
     const int numLeds = 120;
     auto data = std::vector<Led>(numLeds);
-    const float  waveSpeed = 0.1; // Wave speed in Hz
-    const float  waveWidth = 10;  // Wave width in LEDs
-
-    while(true) // Infinite loop to keep the wave going
+    // float brightness = 0.30f;
+    auto twinkle =
+            TwinkleConfig{.riseTime = 1.30f, .maxBrightness = 0.8f}; // Max brightness and rise time
+    while(true)
     {
-        double t = esp_timer_get_time() / 1000000.0; // Current time in seconds
-
-        // Calculate the position of the wave center
-        double waveCenter = fmod(t * waveSpeed * numLeds, double(numLeds));
+        float t = float(esp_timer_get_time()) / 500'000.0f;
+        float scalar = 0.02;
+        float deltaTime = 0.05;
 
         for(int i = 0; i < numLeds; ++i)
         {
-            double distance = fabs(i - waveCenter);
-            if(distance <= waveWidth / 2)
-            {
-                // LED is within the wave
-                double intensity = (waveWidth / 2 - distance) / (waveWidth / 2) * 0.6;
-                data[i].r = uint8_t(intensity * 64);
-                data[i].g = uint8_t(intensity * 255);
-                data[i].b = uint8_t(intensity * 32);
-            }
-            else
-            {
-                // LED is outside the wave
-                data[i].r = 0;
-                data[i].g = 0;
-                data[i].b = 0;
-            }
+            auto color = palette((t + (float)i) * scalar);
+            data[i].r = uint8_t(color.y * data[i].brightness * 255);
+            data[i].g = uint8_t(color.x * data[i].brightness * 255);
+            data[i].b = uint8_t(color.z * data[i].brightness * 255);
+            updateTwinkle(data[i], twinkle, deltaTime);
         }
 
-        // Flush RGB values to LEDs
         writer.write(data);
-        vTaskDelay(pdMS_TO_TICKS(50)); // Delay to control the speed of the wave
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
-    // while(true)
-    // {
-    //     float t = float(esp_timer_get_time()) / 100'000.0f;
-    //     float scalar = 0.02;
-    //     float brightness = 0.3;
-    //
-    //     for(int i = 0; i < numLeds; ++i)
-    //     {
-    //         auto color = palette((t + (float)i) * scalar);
-    //         data[i].r = uint8_t(color.y * brightness * 255);
-    //         data[i].g = uint8_t(color.x * brightness * 255);
-    //         data[i].b = uint8_t(color.z * brightness * 255);
-    //     }
-    //
-    //     writer.write(data);
-    //     vTaskDelay(pdMS_TO_TICKS(50));
-    // }
 }
