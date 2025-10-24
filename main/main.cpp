@@ -41,15 +41,10 @@ glm::vec3 palette(float t)
     // auto c = glm::vec3(1.0, 1.0, 1.0);
     // auto d = glm::vec3(0.00, 0.10, 0.20);
 
-    // auto a = glm::vec3(0.938, 0.500, 0.188);
-    // auto b = glm::vec3(0.098, 0.168, 0.438);
-    // auto c = glm::vec3(0.800, 0.800, 0.608);
-    // auto d = glm::vec3(0.000, 0.108, 0.500);
-
-    // auto a = glm::vec3(0.938, 0.500, 0.188);
-    // auto b = glm::vec3(0.098, 0.168, 0.438);
-    // auto c = glm::vec3(0.800, 0.800, 0.608);
-    // auto d = glm::vec3(0.000, 0.108, 0.500);
+    auto a = glm::vec3(0.938, 0.500, 0.188);
+    auto b = glm::vec3(0.098, 0.168, 0.438);
+    auto c = glm::vec3(0.800, 0.800, 0.608);
+    auto d = glm::vec3(0.000, 0.108, 0.500);
 
     // auto a = glm::vec3(0.240, 0.240, -0.202);
     // auto b = glm::vec3(1.000, 1.000, -0.002);
@@ -97,6 +92,12 @@ glm::vec3 palette(float t)
     // auto c = glm::vec3(0.500, 0.500, 0.000);
     // auto d = glm::vec3(0.500, 0.000, 0.000);
 
+    // Halloween color palette
+    // auto a = glm::vec3(0.941, 0.352, 0.000); // pumpkin orange
+    // auto b = glm::vec3(0.235, 0.118, 0.455); // eerie purple
+    // auto c = glm::vec3(0.902, 0.902, 0.902); // ghostly white
+    // auto d = glm::vec3(0.047, 0.102, 0.400); // dark spooky blue
+                                             //
     // auto a = glm::vec3(0.667, 0.500, 0.500);
     // auto b = glm::vec3(0.500, 0.667, 0.500);
     // auto c = glm::vec3(0.667, 0.666, 0.500);
@@ -112,10 +113,12 @@ glm::vec3 palette(float t)
     // auto c = Vec3(0.388, 0.388, 0.296);
     // auto d = Vec3(2.538, 2.478, 0.168);
 
-    auto a = glm::vec3(0.500, 0.000, 0.500);
-    auto b = glm::vec3(0.500, 0.000, 0.500);
-    auto c = glm::vec3(0.500, 0.000, 0.333);
-    auto d = glm::vec3(0.500, 0.000, 0.667);
+    // -------------------------------
+    // auto a = glm::vec3(0.500, 0.000, 0.500);
+    // auto b = glm::vec3(0.500, 0.000, 0.500);
+    // auto c = glm::vec3(0.500, 0.000, 0.333);
+    // auto d = glm::vec3(0.500, 0.000, 0.667);
+    // -------------------------------
 
     // auto a = glm::vec3(0.000, 0.500, 0.500);
     // auto b = glm::vec3(0.000, 0.500, 0.500);
@@ -233,13 +236,14 @@ void hueToRgb(float hue, uint8_t& r, uint8_t& g, uint8_t& b)
 
 extern "C" auto app_main() -> void
 {
-    auto writer = NeoWriter(GPIO_NUM_3);
-    const int numLeds = 24;
+    // auto writer = NeoWriter(GPIO_NUM_3);
+    auto writer = NeoWriter(GPIO_NUM_48);
+    const int numLeds = 50;
     auto data = std::vector<Led>(numLeds);
-    float brightness = 0.10f;
+    float brightness = 1.00f;
     while(true)
     {
-        float t = float(esp_timer_get_time()) / 0'050'000.0f;
+        float t = float(esp_timer_get_time()) / 0'250'000.0f;
         float scalar = 0.12;
 
         for(int i = 0; i < numLeds; ++i)
